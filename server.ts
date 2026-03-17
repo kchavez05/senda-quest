@@ -12,7 +12,11 @@ async function startServer() {
   const app = express();
   const PORT = process.env.PORT || 3000;
 
-  app.use(cors());
+  app.use(cors({
+    origin: ['https://senda-quest.web.app'],
+    methods: ['POST'],
+    allowedHeaders: ['Content-Type'],
+  }));
   app.use(express.json());
 
   // API Route for Gemini GM Response
