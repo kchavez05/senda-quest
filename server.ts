@@ -4,6 +4,10 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
+import dotenv from 'dotenv';
+
+// Load environment variables from .env file if it exists
+dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -109,14 +113,20 @@ async function startServer() {
   });
 
   // Vite middleware for development
-  if (process.env.NODE_ENV !== 'production') {
+  const isProd = process.env.NODE_ENV === 'production';
+  
+  if (!isProd) {
+    console.log('Starting in DEVELOPMENT mode (Vite middleware)');
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: 'spa',
     });
     app.use(vite.middlewares);
   } else {
+    console.log('Starting in PRODUCTION mode (Static serving)');
     const distPath = path.join(process.cwd(), 'dist');
+    
+    // Check if dist exists to prevent crashes in production mode if build is missing
     app.use(express.static(distPath));
     app.get('*', (req, res) => {
       res.sendFile(path.join(distPath, 'index.html'));
