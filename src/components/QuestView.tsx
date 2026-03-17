@@ -109,7 +109,7 @@ export default function QuestView({ gameState, setGameState }: QuestViewProps) {
     setIsAILoading(true);
     
     try {
-      const response = await fetch('/api/gm-response', {
+      const response = await fetch('https://senda-quest-backend-955233598736.europe-west1.run.app/api/gm-response', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
