@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Send, Sword, Shield, Zap, Backpack, Dices, HelpCircle, ChevronDown } from 'lucide-react';
 import { GameState, GameLog, Character, Item } from '../types';
 import { SPELLS, RACES } from '../constants';
@@ -29,7 +29,7 @@ export default function QuestView({ gameState, setGameState }: QuestViewProps) {
     const lastGMMsg = [...gameState.logs].reverse().find(l => l.sender === 'gm')?.text || '';
     const attributes = ['Strength', 'Dexterity', 'Intelligence', 'Wisdom', 'Charisma', 'Constitution'];
     const found = attributes.filter(attr => {
-      const regex = new RegExp(`\\b${attr}\\b`, 'i');
+      const regex = new RegExp(`\b${attr}\b`, 'i');
       return regex.test(lastGMMsg);
     });
     

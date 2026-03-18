@@ -14,7 +14,6 @@ const __dirname = path.dirname(__filename);
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
 
   app.use(cors());
   app.use(express.json());
@@ -112,27 +111,26 @@ async function startServer() {
     }
   });
 
-  // Vite middleware for development
   const isProd = process.env.NODE_ENV === 'production';
-  
-  if (!isProd) {
-    console.log('Starting in DEVELOPMENT mode (Vite middleware)');
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: 'spa',
-    });
-    app.use(vite.middlewares);
-  } else {
+  const root = process.cwd();
+
+  if (isProd) {
     console.log('Starting in PRODUCTION mode (Static serving)');
-    const distPath = path.join(process.cwd(), 'dist');
-    
-    // Check if dist exists to prevent crashes in production mode if build is missing
+    const distPath = path.join(root, 'dist');
     app.use(express.static(distPath));
     app.get('*', (req, res) => {
-      res.sendFile(path.join(distPath, 'index.html'));
+      res.sendFile(path.resolve(distPath, 'index.html'));
     });
+  } else {
+    console.log('Starting in DEVELOPMENT mode (Vite middleware)');
+    const vite = await createViteServer({
+      root,
+      server: { middlewareMode: true },
+    });
+    app.use(vite.middlewares);
   }
 
+  const PORT = process.env.PORT || 3000;
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on http://localhost:${PORT}`);
   });
