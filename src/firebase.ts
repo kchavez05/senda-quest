@@ -5,15 +5,15 @@ import { getAnalytics } from 'firebase/analytics';
 // TODO: Add SDKs for Firebase products that you want to use
 // https://firebase.google.com/docs/web/setup#available-libraries
 
-// Your web app's Firebase configuration
+// Your web app's Firebase configuration read from environment variables
 const firebaseConfig = {
-  apiKey: 'AIzaSyDmpkqSPGFxBlaWOuHg5J4q1zrvPZaxTzo',
-  authDomain: 'senda-quest-490422.firebaseapp.com',
-  projectId: 'senda-quest-490422',
-  storageBucket: 'senda-quest-490422.firebasestorage.app',
-  messagingSenderId: '955233598736',
-  appId: '1:955233598736:web:1651f6ed9623d6012c7995',
-  measurementId: 'G-YT67N2W7WW',
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
 };
 
 // Initialize Firebase
