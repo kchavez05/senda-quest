@@ -2,6 +2,7 @@ import React from 'react';
 import { motion } from 'motion/react';
 import { Settings, Home, HelpCircle, LogOut, MessageSquare, ChevronRight } from 'lucide-react';
 import { GameState } from '../types';
+import { logout } from '../firebase';
 
 interface ResourcesViewProps {
   setView: (view: GameState['currentView']) => void;
@@ -9,6 +10,10 @@ interface ResourcesViewProps {
 }
 
 export default function ResourcesView({ setView }: ResourcesViewProps) {
+  const handleLogout = async () => {
+    await logout();
+    setView('landing');
+  };
   return (
     <div className="p-6 max-w-2xl mx-auto">
       <div className="flex items-center gap-4 mb-8">
@@ -29,8 +34,8 @@ export default function ResourcesView({ setView }: ResourcesViewProps) {
         />
         <MenuButton 
           icon={<LogOut size={20} />} 
-          label="End Quest" 
-          onClick={() => window.location.reload()} 
+          label="Sign Out" 
+          onClick={handleLogout} 
         />
         <MenuButton 
           icon={<MessageSquare size={20} />} 

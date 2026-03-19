@@ -1,0 +1,58 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "User Profile",
+      "description": "Stores user-specific game data, including their active character.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "The unique ID of the user." },
+        "name": { "type": "string", "description": "The name of the user's character." },
+        "class": { "type": "string", "description": "The character's class." },
+        "race": { "type": "string", "description": "The character's race." },
+        "background": { "type": "string", "description": "The character's background." },
+        "hp": { "type": "number", "description": "Current health points." },
+        "maxHp": { "type": "number", "description": "Maximum health points." },
+        "mana": { "type": "number", "description": "Current mana points." },
+        "maxMana": { "type": "number", "description": "Maximum mana points." },
+        "inventory": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" },
+              "type": { "type": "string" },
+              "description": { "type": "string" }
+            }
+          }
+        },
+        "combatCount": { "type": "number", "description": "Number of combat encounters faced." },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "name", "class", "race", "hp", "maxHp", "mana", "maxMana"]
+    },
+    "GameLog": {
+      "title": "Game Log",
+      "description": "A single entry in the game's narrative history.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "sender": { "type": "string", "enum": ["gm", "player", "system"] },
+        "text": { "type": "string" },
+        "timestamp": { "type": "number" },
+        "uid": { "type": "string", "description": "The owner of this log entry." }
+      },
+      "required": ["id", "sender", "text", "timestamp", "uid"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "The user's profile and active character data."
+    },
+    "/users/{userId}/logs/{logId}": {
+      "schema": "GameLog",
+      "description": "The narrative logs for a specific user's game session."
+    }
+  }
+}

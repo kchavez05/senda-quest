@@ -5,7 +5,7 @@ import { Character, ClassType, RaceType, BackstoryType, TemperamentType, Alignme
 import { CLASSES, RACES, BACKGROUNDS } from '../constants';
 
 interface CharacterCreationProps {
-  onComplete: (character: Character) => void;
+  onComplete: (character: Omit<Character, 'uid'>) => void;
   key?: any;
 }
 
@@ -37,8 +37,8 @@ export default function CharacterCreation({ onComplete }: CharacterCreationProps
     if (step < steps.length - 1) setStep(step + 1);
     else {
       const bg = BACKGROUNDS[formData.background as BackgroundType];
-      const finalChar: Character = {
-        ...formData as Character,
+      const finalChar: Omit<Character, 'uid'> = {
+        ...formData as Omit<Character, 'uid'>,
         inventory: [...bg.items],
         hp: 20,
         maxHp: 20,

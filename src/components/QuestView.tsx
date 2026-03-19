@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { Send, Sword, Shield, Zap, Backpack, Dices, HelpCircle, ChevronDown } from 'lucide-react';
 import { GameState, GameLog, Character, Item } from '../types';
 import { SPELLS, RACES } from '../constants';
+import { db, handleFirestoreError, OperationType } from '../firebase';
+import { collection, addDoc, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 
 interface QuestViewProps {
   gameState: GameState;
@@ -29,7 +31,7 @@ export default function QuestView({ gameState, setGameState }: QuestViewProps) {
     const lastGMMsg = [...gameState.logs].reverse().find(l => l.sender === 'gm')?.text || '';
     const attributes = ['Strength', 'Dexterity', 'Intelligence', 'Wisdom', 'Charisma', 'Constitution'];
     const found = attributes.filter(attr => {
-      const regex = new RegExp(`\b${attr}\b`, 'i');
+      const regex = new RegExp(`\\b${attr}\\b`, 'i');
       return regex.test(lastGMMsg);
     });
     
@@ -93,16 +95,22 @@ export default function QuestView({ gameState, setGameState }: QuestViewProps) {
     }
   }, [gameState.logs]);
 
-  const addLog = (sender: 'gm' | 'player' | 'system', text: string) => {
-    setGameState(prev => ({
-      ...prev,
-      logs: [...prev.logs, { 
-        id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`, 
-        sender, 
-        text, 
-        timestamp: Date.now() 
-      }]
-    }));
+  const addLog = async (sender: 'gm' | 'player' | 'system', text: string) => {
+    if (!gameState.character?.uid) return;
+    
+    const logData = {
+      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      sender,
+      text,
+      timestamp: Date.now(),
+      uid: gameState.character.uid
+    };
+
+    try {
+      await addDoc(collection(db, 'users', gameState.character.uid, 'logs'), logData);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.CREATE, `users/${gameState.character.uid}/logs`);
+    }
   };
 
   const getGMResponse = async (action: string, isRoll: boolean = false) => {
@@ -126,40 +134,51 @@ export default function QuestView({ gameState, setGameState }: QuestViewProps) {
       
       if (data.text) {
         let text = data.text;
+        let updatedCharacter = { ...gameState.character };
+        let hasChanges = false;
         
         // Handle player HP
         const hpMatch = text.match(/\[PLAYER_HP: (\d+)\]/);
-        if (hpMatch) {
+        if (hpMatch && updatedCharacter) {
           const newHp = parseInt(hpMatch[1]);
-          setGameState(prev => ({
-            ...prev,
-            character: prev.character ? { 
-              ...prev.character, 
-              hp: Math.min(prev.character.maxHp, Math.max(0, newHp)) 
-            } : null
-          }));
+          updatedCharacter.hp = Math.min(updatedCharacter.maxHp, Math.max(0, newHp));
           text = text.replace(hpMatch[0], '');
+          hasChanges = true;
         }
 
         // Handle player Mana
         const manaMatch = text.match(/\[PLAYER_MANA: (\d+)\]/);
-        if (manaMatch) {
+        if (manaMatch && updatedCharacter) {
           const newMana = parseInt(manaMatch[1]);
-          setGameState(prev => ({
-            ...prev,
-            character: prev.character ? { 
-              ...prev.character, 
-              hp: prev.character.hp, // Keep HP
-              mana: Math.min(prev.character.maxMana, Math.max(0, newMana)) 
-            } : null
-          }));
+          updatedCharacter.mana = Math.min(updatedCharacter.maxMana, Math.max(0, newMana));
           text = text.replace(manaMatch[0], '');
+          hasChanges = true;
+        }
+
+        // Update Firestore if character stats changed
+        if (hasChanges && updatedCharacter && updatedCharacter.uid) {
+          try {
+            await updateDoc(doc(db, 'users', updatedCharacter.uid), {
+              hp: updatedCharacter.hp,
+              mana: updatedCharacter.mana,
+              updatedAt: serverTimestamp()
+            });
+          } catch (error) {
+            handleFirestoreError(error, OperationType.UPDATE, `users/${updatedCharacter.uid}`);
+          }
         }
 
         // Handle signals
         if (text.includes('[COMBAT_START]')) {
           setGameState(prev => ({ ...prev, isCombat: true, combatCount: prev.combatCount + 1 }));
           text = text.replace('[COMBAT_START]', '');
+          
+          // Persist combat count
+          if (updatedCharacter && updatedCharacter.uid) {
+            updateDoc(doc(db, 'users', updatedCharacter.uid), {
+              combatCount: gameState.combatCount + 1
+            }).catch(e => console.error("Failed to update combat count", e));
+          }
         }
         if (text.includes('[COMBAT_END]')) {
           setGameState(prev => ({ ...prev, isCombat: false, enemies: [] }));

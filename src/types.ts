@@ -14,6 +14,7 @@ export interface Item {
 }
 
 export interface Character {
+  uid?: string;
   name: string;
   class: ClassType;
   race: RaceType;
@@ -53,4 +54,5 @@ export interface GameLog {
   sender: 'gm' | 'player' | 'system';
   text: string;
   timestamp: number;
+  uid?: string;
 }

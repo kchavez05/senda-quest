@@ -5,7 +5,7 @@ import {
   Shield, 
   Scroll, 
   Backpack, 
-  User, 
+  User as UserIcon, 
   Settings, 
   Home, 
   HelpCircle, 
@@ -14,6 +14,8 @@ import {
 } from 'lucide-react';
 import { GameState, Character, GameLog } from './types';
 import { CLASSES, RACES, BACKGROUNDS, SPELLS } from './constants';
+import { auth, db, onAuthStateChanged, User, logout, loginWithGoogle, handleFirestoreError, OperationType } from './firebase';
+import { doc, getDoc, setDoc, onSnapshot, collection, query, orderBy, limit } from 'firebase/firestore';
 
 // Components will be imported or defined below
 import LandingPage from './components/LandingPage';
@@ -24,24 +26,113 @@ import CharacterView from './components/CharacterView';
 import ResourcesView from './components/ResourcesView';
 
 export default function App() {
+  const [user, setUser] = useState<User | null>(null);
+  const [isAuthReady, setIsAuthReady] = useState(false);
   const [gameState, setGameState] = useState<GameState>({
     character: null,
     currentView: 'landing',
-    logs: [
-      { id: '1', sender: 'gm', text: 'The heavy oak door groans behind you, sealing out the biting mountain chill. You find yourself in a dimly lit common room, the air thick with the scent of roasted meat and wet wool. You barely remember the long trek through the Blackwood, your boots still caked in its dark mire, but the promise of warmth and a dry bed was too great to ignore. A hooded figure beckons you from a shadowed corner...', timestamp: Date.now() }
-    ],
+    logs: [],
     isCombat: false,
     enemies: [],
     turn: 'player',
     combatCount: 0
   });
 
+  // Auth listener
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setIsAuthReady(true);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  // Load character data when user logs in
+  useEffect(() => {
+    if (!user) {
+      setGameState(prev => ({ ...prev, character: null, currentView: 'landing', logs: [] }));
+      return;
+    }
+
+    const userDocRef = doc(db, 'users', user.uid);
+    
+    // Listen for character changes
+    const unsubscribeCharacter = onSnapshot(userDocRef, (docSnap) => {
+      if (docSnap.exists()) {
+        const data = docSnap.data() as Character;
+        setGameState(prev => ({ 
+          ...prev, 
+          character: data,
+          currentView: prev.currentView === 'landing' || prev.currentView === 'creation' ? 'quest' : prev.currentView
+        }));
+      } else {
+        setGameState(prev => ({ ...prev, character: null }));
+      }
+    }, (error) => {
+      handleFirestoreError(error, OperationType.GET, `users/${user.uid}`);
+    });
+
+    // Listen for logs
+    const logsQuery = query(
+      collection(db, 'users', user.uid, 'logs'),
+      orderBy('timestamp', 'asc')
+    );
+
+    const unsubscribeLogs = onSnapshot(logsQuery, (querySnapshot) => {
+      const logs: GameLog[] = [];
+      querySnapshot.forEach((doc) => {
+        logs.push(doc.data() as GameLog);
+      });
+      
+      if (logs.length === 0 && user) {
+        // Initial log if none exist
+        const initialLog: GameLog = {
+          id: '1',
+          sender: 'gm',
+          text: 'The heavy oak door groans behind you, sealing out the biting mountain chill. You find yourself in a dimly lit common room, the air thick with the scent of roasted meat and wet wool. You barely remember the long trek through the Blackwood, your boots still caked in its dark mire, but the promise of warmth and a dry bed was too great to ignore. A hooded figure beckons you from a shadowed corner...',
+          timestamp: Date.now(),
+          uid: user.uid
+        };
+        setGameState(prev => ({ ...prev, logs: [initialLog] }));
+      } else {
+        setGameState(prev => ({ ...prev, logs }));
+      }
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, `users/${user.uid}/logs`);
+    });
+
+    return () => {
+      unsubscribeCharacter();
+      unsubscribeLogs();
+    };
+  }, [user]);
+
   const setView = (view: GameState['currentView']) => {
     setGameState(prev => ({ ...prev, currentView: view }));
   };
 
-  const updateCharacter = (character: Character) => {
-    setGameState(prev => ({ ...prev, character, currentView: 'quest', isGameOver: false }));
+  const updateCharacter = async (characterData: Omit<Character, 'uid'>) => {
+    if (!user) return;
+    
+    const character: Character = {
+      ...characterData,
+      uid: user.uid
+    };
+
+    try {
+      await setDoc(doc(db, 'users', user.uid), character);
+      setGameState(prev => ({ ...prev, character, currentView: 'quest', isGameOver: false }));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, `users/${user.uid}`);
+    }
+  };
+
+  const handleLogout = async () => {
+    await logout();
+  };
+
+  const handleLogin = async () => {
+    await loginWithGoogle();
   };
 
   const resetGame = () => {
@@ -86,7 +177,7 @@ export default function App() {
         <div className="h-full w-full">
           <AnimatePresence mode="wait">
           {gameState.currentView === 'landing' && (
-            <LandingPage key="landing" onStart={() => setView('creation')} />
+            <LandingPage key="landing" onStart={() => setView('creation')} user={user} onLogin={handleLogin} />
           )}
           {gameState.currentView === 'creation' && (
             <CharacterCreation key="creation" onComplete={updateCharacter} />
@@ -158,7 +249,7 @@ export default function App() {
             <NavButton 
               active={gameState.currentView === 'character'} 
               onClick={() => setView('character')} 
-              icon={<User size={20} />} 
+              icon={<UserIcon size={20} />} 
               label="Hero" 
             />
             <NavButton 

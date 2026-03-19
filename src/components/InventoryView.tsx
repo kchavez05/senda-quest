@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Backpack, Trash2, Info, X } from 'lucide-react';
 import { Character, Item, GameState } from '../types';
+import { db, handleFirestoreError, OperationType } from '../firebase';
+import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 
 interface InventoryViewProps {
   character: Character | null;
@@ -14,18 +16,20 @@ export default function InventoryView({ character, setGameState }: InventoryView
 
   if (!character) return null;
 
-  const removeItem = (id: string) => {
-    setGameState(prev => {
-      if (!prev.character) return prev;
-      return {
-        ...prev,
-        character: {
-          ...prev.character,
-          inventory: prev.character.inventory.filter(item => item.id !== id)
-        }
-      };
-    });
-    setSelectedItem(null);
+  const removeItem = async (id: string) => {
+    if (!character.uid) return;
+    
+    const newInventory = character.inventory.filter(item => item.id !== id);
+    
+    try {
+      await updateDoc(doc(db, 'users', character.uid), {
+        inventory: newInventory,
+        updatedAt: serverTimestamp()
+      });
+      setSelectedItem(null);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.UPDATE, `users/${character.uid}`);
+    }
   };
 
   return (

@@ -1,13 +1,16 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { Sword } from 'lucide-react';
+import { Sword, LogIn, User } from 'lucide-react';
+import { User as FirebaseUser } from 'firebase/auth';
 
 interface LandingPageProps {
   onStart: () => void;
+  user: FirebaseUser | null;
+  onLogin: () => void;
   key?: any;
 }
 
-export default function LandingPage({ onStart }: LandingPageProps) {
+export default function LandingPage({ onStart, user, onLogin }: LandingPageProps) {
   return (
     <div className="min-h-full flex flex-col items-center justify-center p-6 text-center">
       <motion.div
@@ -32,13 +35,38 @@ export default function LandingPage({ onStart }: LandingPageProps) {
           "The dice are cast in the shadows of the hearth. Your destiny awaits among the smoke and steel."
         </p>
         
-        <button
-          onClick={onStart}
-          className="group relative px-12 py-4 bg-transparent border border-[#ff4e00]/50 hover:border-[#ff4e00] text-white overflow-hidden transition-all duration-500"
-        >
-          <div className="absolute inset-0 bg-[#ff4e00]/10 group-hover:bg-[#ff4e00]/20 transition-colors" />
-          <span className="relative text-sm uppercase tracking-[0.3em] font-bold">Begin Adventure</span>
-        </button>
+        <div className="flex flex-col gap-4 items-center">
+          {!user ? (
+            <button
+              onClick={onLogin}
+              className="group relative px-12 py-4 bg-transparent border border-[#ff4e00]/50 hover:border-[#ff4e00] text-white overflow-hidden transition-all duration-500 w-full"
+            >
+              <div className="absolute inset-0 bg-[#ff4e00]/10 group-hover:bg-[#ff4e00]/20 transition-colors" />
+              <div className="relative flex items-center justify-center gap-3">
+                <LogIn size={18} className="text-[#ff4e00]" />
+                <span className="text-sm uppercase tracking-[0.3em] font-bold">Sign In to Play</span>
+              </div>
+            </button>
+          ) : (
+            <button
+              onClick={onStart}
+              className="group relative px-12 py-4 bg-transparent border border-[#ff4e00]/50 hover:border-[#ff4e00] text-white overflow-hidden transition-all duration-500 w-full"
+            >
+              <div className="absolute inset-0 bg-[#ff4e00]/10 group-hover:bg-[#ff4e00]/20 transition-colors" />
+              <div className="relative flex items-center justify-center gap-3">
+                <Sword size={18} className="text-[#ff4e00]" />
+                <span className="text-sm uppercase tracking-[0.3em] font-bold">Begin Adventure</span>
+              </div>
+            </button>
+          )}
+
+          {user && (
+            <div className="flex items-center gap-2 text-[10px] text-[#8e9299] uppercase tracking-widest mt-2">
+              <User size={12} />
+              <span>Logged in as {user.displayName || user.email}</span>
+            </div>
+          )}
+        </div>
         
         <div className="mt-16 flex justify-center gap-8 opacity-30">
           <div className="w-12 h-[1px] bg-white/50 self-center" />
