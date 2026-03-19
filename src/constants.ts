@@ -61,3 +61,11 @@ export const SPELLS: Record<ClassType, { name: string; cost: number; effect: str
     { name: 'Divine Hammer', cost: 15, effect: 'A hammer descends from the heavens to deal 2d6 damage' },
   ],
 };
+
+// Game Master Tags
+export const TAG_COMBAT_START = '[COMBAT_START]';
+export const TAG_COMBAT_END = '[COMBAT_END]';
+export const TAG_ROLL_D20 = '[ROLL_D20]';
+export const TAG_ENEMIES_PREFIX = '[ENEMIES: ';
+export const TAG_PLAYER_HP_PREFIX = '[PLAYER_HP: ';
+export const TAG_PLAYER_MANA_PREFIX = '[PLAYER_MANA: ';
