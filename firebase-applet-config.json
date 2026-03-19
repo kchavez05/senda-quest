@@ -1,10 +1,10 @@
 {
-  "projectId": "senda-quest-490422",
-  "appId": "1:955233598736:web:5839c521bb588dbc2c7995",
-  "apiKey": "AIzaSyDmpkqSPGFxBlaWOuHg5J4q1zrvPZaxTzo",
-  "authDomain": "senda-quest-490422.firebaseapp.com",
-  "firestoreDatabaseId": "ai-studio-e3f91757-7d4a-4aa7-8afc-97bb875f15fe",
-  "storageBucket": "senda-quest-490422.firebasestorage.app",
-  "messagingSenderId": "955233598736",
+  "projectId": "senda-quest-1",
+  "appId": "1:503225722347:web:0f22ae094b922fc844a5ae",
+  "apiKey": "AIzaSyCCuGgnJ7BIqljr77iDg_My50OlNmLz8WY",
+  "authDomain": "senda-quest-1.firebaseapp.com",
+  "firestoreDatabaseId": "(default)",
+  "storageBucket": "senda-quest-1.firebasestorage.app",
+  "messagingSenderId": "503225722347",
   "measurementId": ""
 }

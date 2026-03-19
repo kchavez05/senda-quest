@@ -11,7 +11,7 @@ import { getAuth } from 'firebase-admin/auth';
 
 // Initialize firebase admin
 initializeApp({
-  projectId: 'senda-quest-490422',
+  projectId: 'senda-quest-1',
 });
 
 // Load environment variables from .env file if it exists
@@ -92,7 +92,7 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     console.log('Starting in PRODUCTION mode (Static serving)');
-    const distPath = path.join(process.cwd(), 'dist');
+    const distPath = path.join(__dirname, 'dist');
     
     // Check if dist exists to prevent crashes in production mode if build is missing
     app.use(express.static(distPath));
@@ -101,7 +101,7 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
+  app.listen(Number(PORT), '0.0.0.0', () => {
     console.log(`Server running on http://localhost:${PORT}`);
   });
 }
