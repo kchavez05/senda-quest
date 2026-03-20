@@ -38,8 +38,18 @@ export interface Enemy {
   maxHp?: number;
 }
 
+export interface Game {
+  id: string;
+  theme: string;
+  character: Character;
+  updatedAt: number;
+  combatCount: number;
+}
+
 export interface GameState {
   character: Character | null;
+  theme?: string;
+  activeGameId?: string | null;
   currentView: 'landing' | 'creation' | 'quest' | 'inventory' | 'character' | 'resources';
   logs: GameLog[];
   isCombat: boolean;

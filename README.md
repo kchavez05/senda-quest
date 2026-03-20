@@ -18,3 +18,10 @@ View your app in AI Studio: https://ai.studio/apps/e3f91757-7d4a-4aa7-8afc-97bb8
 2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
 3. Run the app:
    `npm run dev`
+
+## Contributing
+
+1. **Development**: Check out the `develop` branch for any new features or bug fixes.
+2. **Testing**: Run `npm run test:unit` for core components and `npm run test:e2e` for visual browser tests. 
+3. **Documentation**: Any functional change to the app *must* be accompanied by an update to this `README.md` to reflect the new state. 
+4. **Releasing**: When merging from `develop` to `main`, an AI assistant (or human) must draft and commit release notes safely.

@@ -14,8 +14,8 @@ initializeApp({
   projectId: 'senda-quest-1',
 });
 
-// Load environment variables from .env file if it exists
-dotenv.config();
+// Load environment variables from .env.local and .env files
+dotenv.config({ path: ['.env.local', '.env'] });
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

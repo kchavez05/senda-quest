@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { GameState, Character, GameLog } from '../types';
+import { GameState, Character, GameLog, Game } from '../types';
 import { auth, db, onAuthStateChanged, User, handleFirestoreError, OperationType } from '../firebase';
-import { doc, onSnapshot, collection, query, orderBy } from 'firebase/firestore';
+import { doc, onSnapshot, collection, query, orderBy, setDoc } from 'firebase/firestore';
 
 interface GameStateContextProps {
   gameState: GameState;
@@ -10,6 +10,9 @@ interface GameStateContextProps {
   isAuthReady: boolean;
   setView: (view: GameState['currentView']) => void;
   resetGame: () => void;
+  savedGames: Game[];
+  createNewGame: (character: Omit<Character, 'uid'>, theme: string) => Promise<void>;
+  loadGame: (gameId: string) => void;
 }
 
 const GameStateContext = createContext<GameStateContextProps | undefined>(undefined);
@@ -17,8 +20,11 @@ const GameStateContext = createContext<GameStateContextProps | undefined>(undefi
 export function GameStateProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isAuthReady, setIsAuthReady] = useState(false);
+  const [savedGames, setSavedGames] = useState<Game[]>([]);
   const [gameState, setGameState] = useState<GameState>({
     character: null,
+    theme: undefined,
+    activeGameId: null,
     currentView: 'landing',
     logs: [],
     isCombat: false,
@@ -36,61 +42,76 @@ export function GameStateProvider({ children }: { children: React.ReactNode }) {
     return () => unsubscribe();
   }, []);
 
-  // Characters and logs sync
+  // Saved Games sync
   useEffect(() => {
     if (!user) {
-      setGameState(prev => ({ ...prev, character: null, currentView: 'landing', logs: [] }));
+      setSavedGames([]);
       return;
     }
 
-    const userDocRef = doc(db, 'users', user.uid);
-    const unsubscribeCharacter = onSnapshot(userDocRef, (docSnap) => {
+    const gamesQuery = query(collection(db, 'users', user.uid, 'games'), orderBy('updatedAt', 'desc'));
+    const unsubscribeGames = onSnapshot(gamesQuery, (querySnapshot) => {
+      const games: Game[] = [];
+      querySnapshot.forEach((docSnap) => {
+        games.push({ id: docSnap.id, ...docSnap.data() } as Game);
+      });
+      setSavedGames(games);
+    }, (error) => {
+      handleFirestoreError(error, OperationType.LIST, `users/${user.uid}/games`);
+    });
+
+    return () => unsubscribeGames();
+  }, [user]);
+
+  // Active Game (Character and Logs) sync
+  useEffect(() => {
+    if (!user || !gameState.activeGameId) {
+      if (gameState.activeGameId === null && gameState.character !== null) {
+        setGameState(prev => ({ ...prev, character: null, theme: undefined, logs: [] }));
+      }
+      return;
+    }
+
+    const gameDocRef = doc(db, 'users', user.uid, 'games', gameState.activeGameId);
+    const unsubscribeCharacter = onSnapshot(gameDocRef, (docSnap) => {
       if (docSnap.exists()) {
-        const data = docSnap.data() as Character;
+        const data = docSnap.data() as Game;
         setGameState(prev => ({ 
           ...prev, 
-          character: data,
+          character: data.character,
+          theme: data.theme,
+          combatCount: data.combatCount || 0,
           currentView: prev.currentView === 'landing' || prev.currentView === 'creation' ? 'quest' : prev.currentView
         }));
       } else {
-        setGameState(prev => ({ ...prev, character: null }));
+        // Game deleted or invalid
+        setGameState(prev => ({ ...prev, character: null, activeGameId: null, theme: undefined }));
       }
     }, (error) => {
-      handleFirestoreError(error, OperationType.GET, `users/${user.uid}`);
+      handleFirestoreError(error, OperationType.GET, `users/${user.uid}/games/${gameState.activeGameId}`);
     });
 
     const logsQuery = query(
-      collection(db, 'users', user.uid, 'logs'),
+      collection(db, 'users', user.uid, 'games', gameState.activeGameId, 'logs'),
       orderBy('timestamp', 'asc')
     );
 
     const unsubscribeLogs = onSnapshot(logsQuery, (querySnapshot) => {
       const logs: GameLog[] = [];
-      querySnapshot.forEach((doc) => {
-        logs.push(doc.data() as GameLog);
+      querySnapshot.forEach((docLog) => {
+        logs.push(docLog.data() as GameLog);
       });
       
-      if (logs.length === 0 && user) {
-        const initialLog: GameLog = {
-          id: '1',
-          sender: 'gm',
-          text: 'The heavy oak door groans behind you, sealing out the biting mountain chill. You find yourself in a dimly lit common room, the air thick with the scent of roasted meat and wet wool. You barely remember the long trek through the Blackwood, your boots still caked in its dark mire, but the promise of warmth and a dry bed was too great to ignore. A hooded figure beckons you from a shadowed corner...',
-          timestamp: Date.now(),
-          uid: user.uid
-        };
-        setGameState(prev => ({ ...prev, logs: [initialLog] }));
-      } else {
-        setGameState(prev => ({ ...prev, logs }));
-      }
+      setGameState(prev => ({ ...prev, logs }));
     }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, `users/${user.uid}/logs`);
+      handleFirestoreError(error, OperationType.LIST, `users/${user.uid}/games/${gameState.activeGameId}/logs`);
     });
 
     return () => {
       unsubscribeCharacter();
       unsubscribeLogs();
     };
-  }, [user]);
+  }, [user, gameState.activeGameId]);
 
   // Death effect
   useEffect(() => {
@@ -112,23 +133,76 @@ export function GameStateProvider({ children }: { children: React.ReactNode }) {
     setGameState(prev => ({ ...prev, currentView: view }));
   };
 
-  const resetGame = () => {
-    setGameState({
-      character: null,
-      currentView: 'landing',
-      logs: [
-        { id: '1', sender: 'gm', text: 'The heavy oak door groans behind you, sealing out the biting mountain chill. You find yourself in a dimly lit common room, the air thick with the scent of roasted meat and wet wool. You barely remember the long trek through the Blackwood, your boots still caked in its dark mire, but the promise of warmth and a dry bed was too great to ignore. A hooded figure beckons you from a shadowed corner...', timestamp: Date.now() }
-      ],
-      isCombat: false,
-      enemies: [],
-      turn: 'player',
+  const loadGame = (gameId: string) => {
+    setGameState(prev => ({
+      ...prev,
+      activeGameId: gameId,
+      currentView: 'quest',
       isGameOver: false,
+      isCombat: false,
+      enemies: []
+    }));
+  };
+
+  const createNewGame = async (characterData: Omit<Character, 'uid'>, theme: string) => {
+    if (!user) return;
+    const gameId = doc(collection(db, 'users')).id; // Generate random ID
+    const character: Character = {
+      ...characterData,
+      uid: user.uid
+    };
+
+    const newGame: Omit<Game, 'id'> = {
+      theme,
+      character,
+      updatedAt: Date.now(),
       combatCount: 0
-    });
+    };
+
+    try {
+      await setDoc(doc(db, 'users', user.uid, 'games', gameId), newGame);
+      setGameState(prev => ({
+        ...prev,
+        activeGameId: gameId,
+        theme,
+        character,
+        currentView: 'quest',
+        isGameOver: false,
+        isCombat: false,
+        enemies: [],
+        logs: []
+      }));
+      // Add initial log
+      const initialLog: GameLog = {
+        id: '1',
+        sender: 'gm',
+        text: `You open your eyes. The atmosphere is unfamiliar, yet exactly as you feared. A new journey begins. What do you do?`,
+        timestamp: Date.now(),
+        uid: user.uid
+      };
+      await setDoc(doc(db, 'users', user.uid, 'games', gameId, 'logs', '1'), initialLog);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, `users/${user.uid}/games/${gameId}`);
+    }
+  };
+
+  const resetGame = () => {
+    setGameState(prev => ({
+       ...prev,
+       character: null,
+       activeGameId: null,
+       theme: undefined,
+       currentView: 'landing',
+       logs: [],
+       isCombat: false,
+       enemies: [],
+       isGameOver: false,
+       combatCount: 0
+    }));
   };
 
   return (
-    <GameStateContext.Provider value={{ gameState, setGameState, user, isAuthReady, setView, resetGame }}>
+    <GameStateContext.Provider value={{ gameState, setGameState, user, isAuthReady, setView, resetGame, savedGames, createNewGame, loadGame }}>
       {children}
     </GameStateContext.Provider>
   );

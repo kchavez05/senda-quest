@@ -16,7 +16,10 @@ export function generateGMPrompt(action: string, isRoll: boolean, gameState: any
   }
   historySection += `Recent History:\n${contextLogs}`;
 
-  return `You are a Game Master in a dark fantasy tavern setting. 
+  const themeText = gameState.theme ? `Theme/Setting: ${gameState.theme}\n(NOTE: Do not use the literal theme name as the name of the world. Invent a creative, fitting name for the world, region, or city.)` : 'Theme/Setting: Dark Fantasy Tavern';
+
+  return `You are a Game Master. 
+${themeText}
 Player Character: ${JSON.stringify(gameState.character)}
 Combat Status: ${gameState.isCombat ? 'ACTIVE' : 'INACTIVE'}
 Combat Encounter Count: ${gameState.combatCount}
@@ -25,7 +28,7 @@ ${historySection}
 
 ${isRoll ? 'The player just rolled a' : 'Player Action'}: ${action}
 
-Respond as the GM. Keep it atmospheric, dark, and concise. 
+Respond as the GM. ALWAYS start your response with a vivid, immersive description of the player's immediate situation, senses, and surroundings before addressing their action. Keep the overall tone atmospheric, dark, and concise. 
 
 CRITICAL: INITIATIVE FLOW
 - Initiative is rolled EXACTLY ONCE at the start of combat.

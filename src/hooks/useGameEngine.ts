@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useGameState } from '../context/GameStateContext';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { collection, addDoc, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
@@ -37,9 +37,10 @@ export function useGameEngine() {
     };
 
     try {
-      await addDoc(collection(db, 'users', gameState.character.uid, 'logs'), logData);
+      if (!gameState.activeGameId) return;
+      await addDoc(collection(db, 'users', gameState.character.uid, 'games', gameState.activeGameId, 'logs'), logData);
     } catch (error) {
-      handleFirestoreError(error, OperationType.CREATE, `users/${gameState.character.uid}/logs`);
+      handleFirestoreError(error, OperationType.CREATE, `users/${gameState.character.uid}/games/${gameState.activeGameId}/logs`);
     }
   };
 
@@ -92,15 +93,15 @@ export function useGameEngine() {
           hasChanges = true;
         }
 
-        if (hasChanges && updatedCharacter && updatedCharacter.uid) {
+        if (hasChanges && updatedCharacter && updatedCharacter.uid && gameState.activeGameId) {
           try {
-            await updateDoc(doc(db, 'users', updatedCharacter.uid), {
-              hp: updatedCharacter.hp,
-              mana: updatedCharacter.mana,
-              updatedAt: serverTimestamp()
+            await updateDoc(doc(db, 'users', updatedCharacter.uid, 'games', gameState.activeGameId), {
+              'character.hp': updatedCharacter.hp,
+              'character.mana': updatedCharacter.mana,
+              updatedAt: Date.now()
             });
           } catch (error) {
-            handleFirestoreError(error, OperationType.UPDATE, `users/${updatedCharacter.uid}`);
+            handleFirestoreError(error, OperationType.UPDATE, `users/${updatedCharacter.uid}/games/${gameState.activeGameId}`);
           }
         }
 
@@ -108,9 +109,10 @@ export function useGameEngine() {
           setGameState(prev => ({ ...prev, isCombat: true, combatCount: prev.combatCount + 1 }));
           text = text.replace(TAG_COMBAT_START, '');
           
-          if (updatedCharacter && updatedCharacter.uid) {
-            updateDoc(doc(db, 'users', updatedCharacter.uid), {
-              combatCount: gameState.combatCount + 1
+          if (updatedCharacter && updatedCharacter.uid && gameState.activeGameId) {
+            updateDoc(doc(db, 'users', updatedCharacter.uid, 'games', gameState.activeGameId), {
+              combatCount: gameState.combatCount + 1,
+              updatedAt: Date.now()
             }).catch(e => console.error("Failed to update", e));
           }
         }
@@ -133,15 +135,17 @@ export function useGameEngine() {
           text = text.replace(enemiesMatch[0], '');
         }
         
-        const needsRoll = text.includes(TAG_ROLL_D20);
+        let needsRoll = text.includes(TAG_ROLL_D20);
         if (needsRoll) {
           text = text.replace(TAG_ROLL_D20, '');
+        } else if (/roll (for )?initiative/i.test(text) || /roll a d20/i.test(text)) {
+          needsRoll = true;
         }
         
         addLog('gm', text.trim());
         
         if (needsRoll) {
-          addLog('system', "The GM awaits your roll...");
+          setTimeout(() => addLog('system', "The GM awaits your roll..."), 50);
         }
       }
     } catch (error: any) {

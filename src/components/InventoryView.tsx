@@ -4,6 +4,7 @@ import { Backpack, Trash2, Info, X } from 'lucide-react';
 import { Character, Item, GameState } from '../types';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { useGameState } from '../context/GameStateContext';
 
 interface InventoryViewProps {
   character: Character | null;
@@ -13,22 +14,23 @@ interface InventoryViewProps {
 
 export default function InventoryView({ character, setGameState }: InventoryViewProps) {
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
+  const { gameState } = useGameState();
 
   if (!character) return null;
 
   const removeItem = async (id: string) => {
-    if (!character.uid) return;
+    if (!character.uid || !gameState.activeGameId) return;
     
     const newInventory = character.inventory.filter(item => item.id !== id);
     
     try {
-      await updateDoc(doc(db, 'users', character.uid), {
-        inventory: newInventory,
-        updatedAt: serverTimestamp()
+      await updateDoc(doc(db, 'users', character.uid, 'games', gameState.activeGameId), {
+        'character.inventory': newInventory,
+        updatedAt: Date.now()
       });
       setSelectedItem(null);
     } catch (error) {
-      handleFirestoreError(error, OperationType.UPDATE, `users/${character.uid}`);
+      handleFirestoreError(error, OperationType.UPDATE, `users/${character.uid}/games/${gameState.activeGameId}`);
     }
   };
 

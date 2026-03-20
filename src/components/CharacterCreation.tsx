@@ -1,17 +1,26 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ChevronRight, ChevronLeft, ChevronDown, Shield, Zap, Target, Heart, Dices } from 'lucide-react';
+import { ChevronRight, ChevronLeft, ChevronDown, Dices } from 'lucide-react';
 import { Character, ClassType, RaceType, BackstoryType, TemperamentType, AlignmentType, BackgroundType } from '../types';
 import { CLASSES, RACES, BACKGROUNDS } from '../constants';
 
 interface CharacterCreationProps {
-  onComplete: (character: Omit<Character, 'uid'>) => void;
+  onComplete: (character: Omit<Character, 'uid'>, theme: string) => void;
   key?: any;
 }
 
+const THEME_OPTIONS = [
+  { id: 'Dark Fantasy', desc: 'A grim world of desperate survival.' },
+  { id: 'Cyberpunk', desc: 'Neon lights and corporate syndicates.' },
+  { id: 'Sci-Fi', desc: 'Galactic exploration and alien threats.' },
+  { id: 'Cosmic Horror', desc: 'Unspeakable terrors from beyond the veil.' },
+  { id: 'High Fantasy', desc: 'Epic quests, dragons, and ancient magic.' },
+];
+
 export default function CharacterCreation({ onComplete }: CharacterCreationProps) {
   const [step, setStep] = useState(0);
-  const [formData, setFormData] = useState<Partial<Character>>({
+  const [formData, setFormData] = useState<Partial<Character> & { theme?: string }>({
+    theme: 'Dark Fantasy',
     name: '',
     class: 'Warrior',
     race: 'Human',
@@ -27,6 +36,7 @@ export default function CharacterCreation({ onComplete }: CharacterCreationProps
   });
 
   const steps = [
+    { title: 'Atmosphere', fields: ['theme'] },
     { title: 'Identity', fields: ['name'] },
     { title: 'Origins', fields: ['race', 'class'] },
     { title: 'History', fields: ['backstory', 'temperament', 'alignment'] },
@@ -37,15 +47,22 @@ export default function CharacterCreation({ onComplete }: CharacterCreationProps
     if (step < steps.length - 1) setStep(step + 1);
     else {
       const bg = BACKGROUNDS[formData.background as BackgroundType];
+      const theme = formData.theme || 'Dark Fantasy';
       const finalChar: Omit<Character, 'uid'> = {
-        ...formData as Omit<Character, 'uid'>,
+        name: formData.name!,
+        class: formData.class as ClassType,
+        race: formData.race as RaceType,
+        backstory: formData.backstory as BackstoryType,
+        temperament: formData.temperament as TemperamentType,
+        alignment: formData.alignment as AlignmentType,
+        background: formData.background as BackgroundType,
         inventory: [...bg.items],
         hp: 20,
         maxHp: 20,
         mana: 10,
         maxMana: 10,
       };
-      onComplete(finalChar);
+      onComplete(finalChar, theme);
     }
   };
 
@@ -90,6 +107,33 @@ export default function CharacterCreation({ onComplete }: CharacterCreationProps
           >
             {step === 0 && (
               <div className="space-y-4">
+                <label className="block text-xs uppercase tracking-widest font-bold text-[#8e9299]">Adventure Theme</label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {THEME_OPTIONS.map(opt => (
+                    <SelectionCard 
+                      key={opt.id}
+                      selected={formData.theme === opt.id}
+                      onClick={() => setFormData({ ...formData, theme: opt.id })}
+                      title={opt.id}
+                      subtitle={opt.desc}
+                    />
+                  ))}
+                  <div className="col-span-1 md:col-span-2 mt-2">
+                    <label className="block text-[10px] uppercase tracking-widest font-bold text-[#8e9299] mb-2">Or define your own custom setting:</label>
+                    <input 
+                      type="text"
+                      value={THEME_OPTIONS.some(o => o.id === formData.theme) ? '' : formData.theme}
+                      onChange={(e) => setFormData({ ...formData, theme: e.target.value })}
+                      placeholder="E.g. Western Fantasy, Steampunk..."
+                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-[#ff4e00] transition-colors font-serif"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {step === 1 && (
+              <div className="space-y-4">
                 <div className="flex justify-between items-end">
                   <label className="block text-xs uppercase tracking-widest font-bold text-[#8e9299]">Hero's Name</label>
                   <button 
@@ -109,7 +153,7 @@ export default function CharacterCreation({ onComplete }: CharacterCreationProps
               </div>
             )}
 
-            {step === 1 && (
+            {step === 2 && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="space-y-4">
                   <label className="block text-xs uppercase tracking-widest font-bold text-[#8e9299]">Race</label>
@@ -142,7 +186,7 @@ export default function CharacterCreation({ onComplete }: CharacterCreationProps
               </div>
             )}
 
-            {step === 2 && (
+            {step === 3 && (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="space-y-4">
                   <label className="block text-xs uppercase tracking-widest font-bold text-[#8e9299]">Backstory</label>
@@ -199,7 +243,7 @@ export default function CharacterCreation({ onComplete }: CharacterCreationProps
               </div>
             )}
 
-            {step === 3 && (
+            {step === 4 && (
               <div className="space-y-4">
                 <label className="block text-xs uppercase tracking-widest font-bold text-[#8e9299]">Starting Gear</label>
                 <div className="grid grid-cols-1 gap-3">
@@ -229,7 +273,7 @@ export default function CharacterCreation({ onComplete }: CharacterCreationProps
           
           <button
             onClick={handleNext}
-            disabled={step === 0 && !formData.name}
+            disabled={(step === 0 && !formData.theme) || (step === 1 && !formData.name)}
             className="flex items-center gap-2 px-8 py-3 bg-[#ff4e00] text-white rounded-full text-sm uppercase tracking-widest font-bold hover:bg-[#ff6a26] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {step === steps.length - 1 ? 'Finish' : 'Next'} <ChevronRight size={16} />
@@ -246,7 +290,7 @@ function SelectionCard({ title, subtitle, selected, onClick }: { title: string, 
       onClick={onClick}
       className={`text-left p-4 rounded-xl border transition-all duration-300 ${selected ? 'bg-[#ff4e00]/10 border-[#ff4e00] shadow-[0_0_15px_rgba(255,78,0,0.1)]' : 'bg-white/5 border-white/10 hover:border-white/30'}`}
     >
-      <h4 className={`font-bold ${selected ? 'text-white' : 'text-[#e0d8d0]'}`}>{title}</h4>
+      <h4 className={`font-bold flex items-center gap-2 ${selected ? 'text-white' : 'text-[#e0d8d0]'}`}>{title}</h4>
       <p className="text-xs text-[#8e9299] mt-1">{subtitle}</p>
     </button>
   );

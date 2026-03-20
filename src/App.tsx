@@ -20,22 +20,10 @@ import CharacterView from './components/CharacterView';
 import ResourcesView from './components/ResourcesView';
 
 function AppContent() {
-  const { gameState, setGameState, user, isAuthReady, setView, resetGame } = useGameState();
+  const { gameState, setGameState, user, isAuthReady, setView, resetGame, createNewGame } = useGameState();
 
-  const updateCharacter = async (characterData: Omit<Character, 'uid'>) => {
-    if (!user) return;
-    
-    const character: Character = {
-      ...characterData,
-      uid: user.uid
-    };
-
-    try {
-      await setDoc(doc(db, 'users', user.uid), character);
-      setGameState(prev => ({ ...prev, character, currentView: 'quest', isGameOver: false }));
-    } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, `users/${user.uid}`);
-    }
+  const handleCharacterCreation = async (characterData: Omit<Character, 'uid'>, theme: string) => {
+    await createNewGame(characterData, theme);
   };
 
   const handleLogin = async () => {
@@ -61,7 +49,7 @@ function AppContent() {
             <LandingPage key="landing" onStart={() => setView('creation')} user={user} onLogin={handleLogin} />
           )}
           {gameState.currentView === 'creation' && (
-            <CharacterCreation key="creation" onComplete={updateCharacter} />
+            <CharacterCreation key="creation" onComplete={handleCharacterCreation} />
           )}
           {gameState.currentView === 'quest' && (
             <QuestView key="quest" />
