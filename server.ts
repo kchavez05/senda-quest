@@ -14,8 +14,13 @@ initializeApp({
   projectId: 'senda-quest-1',
 });
 
-// Load environment variables from .env.local and .env files
-dotenv.config({ path: ['.env.local', '.env'] });
+// Construct Vite-matching environment precedence
+const isProdEnv = process.env.NODE_ENV === 'production';
+const envPaths = isProdEnv
+  ? ['.env.production.local', '.env.production', '.env.local', '.env']
+  : ['.env.development.local', '.env.development', '.env.local', '.env'];
+
+dotenv.config({ path: envPaths });
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

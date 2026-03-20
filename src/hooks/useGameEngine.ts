@@ -10,6 +10,7 @@ export function useGameEngine() {
   const [input, setInput] = useState('');
   const [isRolling, setIsRolling] = useState(false);
   const [rollResult, setRollResult] = useState<{ value: number, type: string } | null>(null);
+  const [pendingRoll, setPendingRoll] = useState<{ sides: number, type: string, count: number, target?: string } | null>(null);
   const [isAILoading, setIsAILoading] = useState(false);
   const [targetingAction, setTargetingAction] = useState<string | null>(null);
   const [selectedSpell, setSelectedSpell] = useState<{ name: string, effect: string, cost: number } | null>(null);
@@ -138,7 +139,7 @@ export function useGameEngine() {
         let needsRoll = text.includes(TAG_ROLL_D20);
         if (needsRoll) {
           text = text.replace(TAG_ROLL_D20, '');
-        } else if (/roll (for )?initiative/i.test(text) || /roll a d20/i.test(text)) {
+        } else if (/roll (for )?initiative/i.test(text) || /roll a d20/i.test(text) || /\b(\d+)?[dD](\d+)\b/.test(text)) {
           needsRoll = true;
         }
         
@@ -160,31 +161,36 @@ export function useGameEngine() {
     }
   };
 
-  const rollDice = (sides: number, type: string, target?: string) => {
+  const rollDice = (sides: number, type: string, count: number = 1, target?: string) => {
     if (isRolling || isAILoading) return;
     setShowMoreActions(false);
+    setPendingRoll({ sides, type, count, target });
+  };
+
+  const resolveRoll = async (result: number) => {
+    if (!pendingRoll || isRolling || isAILoading) return;
+    const { sides, type, count, target } = pendingRoll;
+    
+    setPendingRoll(null);
     setIsRolling(true);
     setRollResult(null);
     
-    setTimeout(async () => {
-      const result = Math.floor(Math.random() * sides) + 1;
-      const bonus = getBonusForAttr(type);
-      const finalResult = bonus ? result + 2 : result; 
-      
-      setRollResult({ value: finalResult, type: bonus ? `${type} (${bonus})` : type });
-      setIsRolling(false);
-      
-      const logText = target ? `Rolled d${sides}: ${finalResult} (${type} vs ${target})` : `Rolled d${sides}: ${finalResult} (${type})`;
-      addLog('system', logText);
-      
-      setTimeout(() => setRollResult(null), 3000);
+    const bonus = getBonusForAttr(type);
+    const finalResult = bonus ? result + 2 : result; 
+    
+    setRollResult({ value: finalResult, type: bonus ? `${type} (${bonus})` : type });
+    setIsRolling(false);
+    
+    const logText = target ? `Rolled ${count > 1 ? count : ''}d${sides}: ${finalResult} (${type} vs ${target})` : `Rolled ${count > 1 ? count : ''}d${sides}: ${finalResult} (${type})`;
+    addLog('system', logText);
+    
+    setTimeout(() => setRollResult(null), 3000);
 
-      const attributes = ['Strength', 'Dexterity', 'Intelligence', 'Wisdom', 'Charisma', 'Constitution'];
-      if (['Prompted', 'Attack', 'Defense', 'Check', 'Initiative', 'Spell', 'Item', ...attributes].some(t => type.includes(t))) {
-        const actionText = target ? `${finalResult} (${type} targeting ${target})` : `${finalResult} (${type})`;
-        await getGMResponse(actionText, true);
-      }
-    }, 1000);
+    const attributes = ['Strength', 'Dexterity', 'Intelligence', 'Wisdom', 'Charisma', 'Constitution'];
+    if (['Prompted', 'Attack', 'Defense', 'Check', 'Initiative', 'Spell', 'Item', ...attributes].some(t => type.includes(t))) {
+      const actionText = target ? `${finalResult} (${type} targeting ${target})` : `${finalResult} (${type})`;
+      await getGMResponse(actionText, true);
+    }
   };
 
   const handleSend = async (e?: React.FormEvent) => {
@@ -206,6 +212,6 @@ export function useGameEngine() {
     setSelectedSpell, selectedItem,
     setSelectedItem, showMoreActions,
     setShowMoreActions, getBonusForAttr,
-    rollDice, handleSend, addLog
+    rollDice, pendingRoll, resolveRoll, handleSend, addLog
   };
 }

@@ -27,11 +27,20 @@ export default function ActionMenu({ engine }: { engine: any }) {
   const lastGMMsg = [...gameState.logs].reverse().find(l => l.sender === 'gm')?.text.toLowerCase() || '';
   const isInitiativePrompt = isWaitingForRoll && lastGMMsg.includes('initiative');
 
+  const promptedDice = React.useMemo(() => {
+    const match = lastGMMsg.match(/\b(\d+)?[dD](\d+)\b/i);
+    if (match) {
+      return { count: match[1] ? parseInt(match[1]) : 1, sides: parseInt(match[2]) };
+    }
+    return { count: 1, sides: 20 };
+  }, [lastGMMsg]);
+
   const getRollLabel = () => {
     if (lastGMMsg.includes('initiative')) return 'Roll for Initiative';
     if (lastGMMsg.includes('attack')) return 'Roll Attack';
     if (lastGMMsg.includes('defense') || lastGMMsg.includes('defend')) return 'Roll Defense';
     if (rollInfo.options.length === 1) return `Roll ${rollInfo.options[0]} Check`;
+    if (promptedDice.sides !== 20 || promptedDice.count > 1) return `Roll ${promptedDice.count > 1 ? promptedDice.count : ''}d${promptedDice.sides}`;
     return 'Roll d20';
   };
 
@@ -40,7 +49,7 @@ export default function ActionMenu({ engine }: { engine: any }) {
     if (gameState.enemies.length > 0) {
       setTargetingAction('Attack');
     } else {
-      rollDice(20, 'Attack');
+      rollDice(20, 'Attack', 1);
     }
   };
 
@@ -48,16 +57,22 @@ export default function ActionMenu({ engine }: { engine: any }) {
     const action = targetingAction;
     setTargetingAction(null);
     if (action === 'Attack') {
-      rollDice(20, 'Attack', targetName);
+      rollDice(20, 'Attack', 1, targetName);
     } else if (action === 'Spell' && selectedSpell) {
       const spell = selectedSpell;
       setSelectedSpell(null);
       setGameState(prev => prev.character ? { ...prev, character: { ...prev.character, mana: Math.max(0, prev.character.mana - spell.cost) } } : prev);
-      rollDice(20, `Spell: ${spell.name} (${spell.effect})`, targetName);
+      const match = spell.effect.match(/\b(\d+)?[dD](\d+)\b/i);
+      const sides = match ? parseInt(match[2]) : 20;
+      const count = match && match[1] ? parseInt(match[1]) : 1;
+      rollDice(sides, `Spell: ${spell.name} (${spell.effect})`, count, targetName);
     } else if (action === 'ItemTarget' && selectedItem) {
       const item = selectedItem;
       setSelectedItem(null);
-      rollDice(20, `Item: ${item.name} (${item.description})`, targetName);
+      const match = item.description.match(/\b(\d+)?[dD](\d+)\b/i);
+      const sides = match ? parseInt(match[2]) : 20;
+      const count = match && match[1] ? parseInt(match[1]) : 1;
+      rollDice(sides, `Item: ${item.name} (${item.description})`, count, targetName);
     }
   };
 
@@ -68,7 +83,10 @@ export default function ActionMenu({ engine }: { engine: any }) {
     } else {
       setTargetingAction(null);
       setSelectedItem(null);
-      rollDice(20, `Item: ${item.name} (${item.description})`);
+      const match = item.description.match(/\b(\d+)?[dD](\d+)\b/i);
+      const sides = match ? parseInt(match[2]) : 20;
+      const count = match && match[1] ? parseInt(match[1]) : 1;
+      rollDice(sides, `Item: ${item.name} (${item.description})`, count);
     }
   };
 
@@ -83,7 +101,10 @@ export default function ActionMenu({ engine }: { engine: any }) {
     if (selfBuffs.includes(spell.name)) {
       setTargetingAction(null);
       setGameState(prev => prev.character ? { ...prev, character: { ...prev.character, mana: Math.max(0, prev.character.mana - spell.cost) } } : prev);
-      rollDice(20, `Spell: ${spell.name} (${spell.effect})`);
+      const match = spell.effect.match(/\b(\d+)?[dD](\d+)\b/i);
+      const sides = match ? parseInt(match[2]) : 20;
+      const count = match && match[1] ? parseInt(match[1]) : 1;
+      rollDice(sides, `Spell: ${spell.name} (${spell.effect})`, count);
     } else {
       setSelectedSpell(spell);
     }
@@ -102,7 +123,7 @@ export default function ActionMenu({ engine }: { engine: any }) {
                     key={attr}
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    onClick={() => rollDice(20, attr)}
+                    onClick={() => rollDice(20, attr, 1)}
                     disabled={isAILoading || isRolling || gameState.isGameOver}
                     className="flex flex-col items-center justify-center gap-1 bg-[#ff4e00]/10 border border-[#ff4e00]/40 rounded-2xl py-3 text-white hover:bg-[#ff4e00]/20 transition-all group disabled:opacity-50"
                   >
@@ -118,7 +139,7 @@ export default function ActionMenu({ engine }: { engine: any }) {
             <motion.button
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
-              onClick={() => rollDice(20, isInitiativePrompt ? 'Initiative' : 'Prompted')}
+              onClick={() => rollDice(promptedDice.sides, isInitiativePrompt ? 'Initiative' : 'Prompted', promptedDice.count)}
               disabled={isAILoading || isRolling || gameState.isGameOver}
               className="w-full flex items-center justify-center gap-3 bg-[#ff4e00]/20 border border-[#ff4e00] rounded-2xl py-4 text-white hover:bg-[#ff4e00]/30 transition-all group disabled:opacity-50 disabled:grayscale shadow-[0_0_20px_rgba(255,78,0,0.1)]"
             >
@@ -314,7 +335,7 @@ export default function ActionMenu({ engine }: { engine: any }) {
 
                     <div className="grid grid-cols-2 gap-2">
                       <ActionButton icon={<Sword size={18} />} label="Attack" onClick={handleAttackClick} disabled={isAILoading || isRolling || isInitiativePrompt || gameState.isGameOver} />
-                      <ActionButton icon={<Shield size={18} />} label="Defend" onClick={() => rollDice(20, 'Defense')} disabled={isAILoading || isRolling || isInitiativePrompt || gameState.isGameOver} />
+                      <ActionButton icon={<Shield size={18} />} label="Defend" onClick={() => rollDice(20, 'Defense', 1)} disabled={isAILoading || isRolling || isInitiativePrompt || gameState.isGameOver} />
                       <ActionButton icon={<Zap size={18} />} label="Spell" onClick={() => {
                         setShowMoreActions(false);
                         setTargetingAction('Spell');
