@@ -2,7 +2,7 @@ import React from 'react';
 import { motion } from 'motion/react';
 import { Sword, LogIn, User, Plus, Clock } from 'lucide-react';
 import type { User as FirebaseUser } from 'firebase/auth';
-import { useGameState } from '../context/GameStateContext';
+import { useGameStore } from '../store/useGameStore';
 
 interface LandingPageProps {
   onStart: () => void;
@@ -12,7 +12,8 @@ interface LandingPageProps {
 }
 
 export default function LandingPage({ onStart, user, onLogin }: LandingPageProps) {
-  const { savedGames, loadGame } = useGameState();
+  const savedGames = useGameStore(s => s.savedGames);
+  const loadGame = useGameStore(s => s.loadGame);
 
   return (
     <div className="min-h-full flex flex-col items-center justify-center p-6 text-center">

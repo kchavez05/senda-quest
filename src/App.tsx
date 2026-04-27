@@ -1,4 +1,6 @@
-import React from 'react';
+import React, { useEffect } from 'react';
+import { StatusBar, Style } from '@capacitor/status-bar';
+import { SplashScreen } from '@capacitor/splash-screen';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Sword, 
@@ -7,10 +9,9 @@ import {
   User as UserIcon, 
   Settings
 } from 'lucide-react';
-import { loginWithGoogle, db, handleFirestoreError, OperationType } from './firebase';
-import { doc, setDoc } from 'firebase/firestore';
+import { loginWithGoogle } from './firebase';
 import { Character } from './types';
-import { GameStateProvider, useGameState } from './context/GameStateContext';
+import { useGameStore, initGameStoreListeners } from './store/useGameStore';
 
 import LandingPage from './components/LandingPage';
 import CharacterCreation from './components/CharacterCreation';
@@ -20,7 +21,15 @@ import CharacterView from './components/CharacterView';
 import ResourcesView from './components/ResourcesView';
 
 function AppContent() {
-  const { gameState, setGameState, user, isAuthReady, setView, resetGame, createNewGame } = useGameState();
+  const isAuthReady = useGameStore(s => s.isAuthReady);
+  const user = useGameStore(s => s.user);
+  const currentView = useGameStore(s => s.gameState.currentView);
+  const character = useGameStore(s => s.gameState.character);
+  const isGameOver = useGameStore(s => s.gameState.isGameOver);
+  const setView = useGameStore(s => s.setView);
+  const resetGame = useGameStore(s => s.resetGame);
+  const createNewGame = useGameStore(s => s.createNewGame);
+  const setGameState = useGameStore(s => s.setGameState);
 
   const handleCharacterCreation = async (characterData: Omit<Character, 'uid'>, theme: string) => {
     await createNewGame(characterData, theme);
@@ -42,25 +51,25 @@ function AppContent() {
         <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-[#ff4e00] blur-[150px] opacity-10" />
       </div>
 
-      <main className={`flex-1 relative z-10 overflow-y-auto ${gameState.character && gameState.currentView !== 'landing' && gameState.currentView !== 'creation' ? 'pb-24' : ''}`}>
+      <main className={`flex-1 relative z-10 overflow-y-auto ${character && currentView !== 'landing' && currentView !== 'creation' ? 'pb-24' : ''}`}>
         <div className="h-full w-full">
           <AnimatePresence mode="wait">
-          {gameState.currentView === 'landing' && (
+          {currentView === 'landing' && (
             <LandingPage key="landing" onStart={() => setView('creation')} user={user} onLogin={handleLogin} />
           )}
-          {gameState.currentView === 'creation' && (
+          {currentView === 'creation' && (
             <CharacterCreation key="creation" onComplete={handleCharacterCreation} />
           )}
-          {gameState.currentView === 'quest' && (
+          {currentView === 'quest' && (
             <QuestView key="quest" />
           )}
-          {gameState.currentView === 'inventory' && (
-            <InventoryView key="inventory" character={gameState.character} setGameState={setGameState} />
+          {currentView === 'inventory' && (
+            <InventoryView key="inventory" character={character!} setGameState={setGameState} />
           )}
-          {gameState.currentView === 'character' && (
-            <CharacterView key="character" character={gameState.character} />
+          {currentView === 'character' && (
+            <CharacterView key="character" character={character!} />
           )}
-          {gameState.currentView === 'resources' && (
+          {currentView === 'resources' && (
             <ResourcesView key="resources" setView={setView} />
           )}
         </AnimatePresence>
@@ -69,7 +78,7 @@ function AppContent() {
 
       {/* Game Over Overlay */}
       <AnimatePresence>
-        {gameState.isGameOver && (
+        {isGameOver && (
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -100,29 +109,29 @@ function AppContent() {
       </AnimatePresence>
 
       {/* Bottom Navigation */}
-      {gameState.character && gameState.currentView !== 'landing' && gameState.currentView !== 'creation' && !gameState.isGameOver && (
+      {character && currentView !== 'landing' && currentView !== 'creation' && !isGameOver && (
         <nav className="fixed bottom-0 left-0 right-0 z-50 bg-black/40 backdrop-blur-xl border-t border-white/10 px-4 py-3">
           <div className="max-w-md mx-auto flex justify-between items-center">
             <NavButton 
-              active={gameState.currentView === 'quest'} 
+              active={currentView === 'quest'} 
               onClick={() => setView('quest')} 
               icon={<Sword size={20} />} 
               label="Quest" 
             />
             <NavButton 
-              active={gameState.currentView === 'inventory'} 
+              active={currentView === 'inventory'} 
               onClick={() => setView('inventory')} 
               icon={<Backpack size={20} />} 
               label="Items" 
             />
             <NavButton 
-              active={gameState.currentView === 'character'} 
+              active={currentView === 'character'} 
               onClick={() => setView('character')} 
               icon={<UserIcon size={20} />} 
               label="Hero" 
             />
             <NavButton 
-              active={gameState.currentView === 'resources'} 
+              active={currentView === 'resources'} 
               onClick={() => setView('resources')} 
               icon={<Settings size={20} />} 
               label="Menu" 
@@ -149,9 +158,20 @@ function NavButton({ active, onClick, icon, label }: { active: boolean, onClick:
 }
 
 export default function App() {
-  return (
-    <GameStateProvider>
-      <AppContent />
-    </GameStateProvider>
-  );
+  useEffect(() => {
+    initGameStoreListeners();
+    
+    const initNativeConfigs = async () => {
+      try {
+        await StatusBar.setStyle({ style: Style.Dark });
+        await StatusBar.setBackgroundColor({ color: '#0a0502' });
+        await SplashScreen.hide();
+      } catch (e) {
+        // Ignored on web
+      }
+    };
+    initNativeConfigs();
+  }, []);
+
+  return <AppContent />;
 }

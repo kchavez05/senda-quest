@@ -20,6 +20,23 @@ dotenv.config({ path: ['.env.local', '.env'] });
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+async function generateWithRetry(ai: GoogleGenAI, prompt: string, retries = 3) {
+  for (let i = 0; i < retries; i++) {
+    try {
+      return await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: prompt,
+      });
+    } catch (error: any) {
+      if (i === retries - 1) throw error;
+      if (error?.message?.includes('429')) throw error; // Don't retry on quota
+      console.warn(`Gemini generation failed, retrying (${i + 1}/${retries})...`);
+      await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, i)));
+    }
+  }
+  throw new Error("Max retries reached");
+}
+
 async function startServer() {
   const app = express();
   const PORT = process.env.PORT || 3000;
@@ -55,10 +72,7 @@ async function startServer() {
 
       try {
         const adminAi = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-        const summaryResponse = await adminAi.models.generateContent({
-          model: "gemini-3-flash-preview",
-          contents: `Summarize the following D&D dark fantasy game logs concisely in a single paragraph, focusing on major events, defeated enemies, and current goals. Keep it under 100 words:\\n\\n${logsToSummarize}`
-        });
+        const summaryResponse = await generateWithRetry(adminAi, `Summarize the following D&D dark fantasy game logs concisely in a single paragraph, focusing on major events, defeated enemies, and current goals. Keep it under 100 words:\n\n${logsToSummarize}`);
         summaryText = summaryResponse.text || "";
       } catch (e) {
         console.error("Failed to generate summary", e);
@@ -67,10 +81,7 @@ async function startServer() {
 
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: generateGMPrompt(action, isRoll, gameState, summaryText),
-      });
+      const response = await generateWithRetry(ai, generateGMPrompt(action, isRoll, gameState, summaryText));
 
       res.json({ text: response.text });
     } catch (error: any) {

@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { HelpCircle } from 'lucide-react';
-import { useGameState } from '../../context/GameStateContext';
+import { useGameStore } from '../../store/useGameStore';
 
 export default function StatusBar() {
-  const { gameState } = useGameState();
+  const gameState = useGameStore(s => s.gameState);
   const [showMechanics, setShowMechanics] = useState(false);
 
   return (

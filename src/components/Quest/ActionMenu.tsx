@@ -1,11 +1,12 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Send, Sword, Shield, Zap, Backpack, Dices, ChevronDown } from 'lucide-react';
-import { useGameState } from '../../context/GameStateContext';
+import { useGameStore } from '../../store/useGameStore';
 import { SPELLS } from '../../constants';
 
 export default function ActionMenu({ engine }: { engine: any }) {
-  const { gameState, setGameState } = useGameState();
+  const gameState = useGameStore(s => s.gameState);
+  const setGameState = useGameStore(s => s.setGameState);
   const {
     input, setInput, isRolling, isAILoading, targetingAction,
     setTargetingAction, selectedSpell, setSelectedSpell, selectedItem,

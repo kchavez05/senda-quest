@@ -32,8 +32,10 @@ Whether you prefer the neon-drenched streets of a **Cyberpunk** dystopia, the ec
 ## 🛠️ Tech Stack
 
 - **Frontend**: React 19, Vite, Tailwind CSS v4, Motion (Animations)
+- **State Management**: Zustand
 - **Backend / DB**: Firebase App & Firestore (Real-time DB), Firebase Authentication
 - **AI Integration**: `@google/genai` (Gemini API)
+- **Mobile Platform**: Capacitor (Android native porting) & PWA (vite-plugin-pwa)
 - **Testing**: Vitest, React Testing Library, Playwright (E2E)
 
 ---
@@ -59,6 +61,14 @@ Whether you prefer the neon-drenched streets of a **Cyberpunk** dystopia, the ec
    npm run dev
    ```
    Navigate to `http://localhost:3000` to start your adventure.
+
+4. **Run Native Android Build:**
+   SendaQuest is built to run natively on mobile devices. To sync the web code and open the project in Android Studio:
+   ```bash
+   npm run build
+   npx cap copy
+   npx cap open android
+   ```
 
 ---
 

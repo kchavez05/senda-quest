@@ -4,7 +4,7 @@ import { Backpack, Trash2, Info, X } from 'lucide-react';
 import { Character, Item, GameState } from '../types';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
-import { useGameState } from '../context/GameStateContext';
+import { useGameStore } from '../store/useGameStore';
 
 interface InventoryViewProps {
   character: Character | null;
@@ -14,7 +14,7 @@ interface InventoryViewProps {
 
 export default function InventoryView({ character, setGameState }: InventoryViewProps) {
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
-  const { gameState } = useGameState();
+  const gameState = useGameStore(s => s.gameState);
 
   if (!character) return null;
 

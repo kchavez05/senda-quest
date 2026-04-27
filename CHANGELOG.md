@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.0] - 2026-04-27
+
+### Added
+- **Mobile Native Porting**: Integrated Capacitor to enable native Android packaging and deployment. Added a `capacitor.config.ts` and successfully built the first Android platform initialization folder.
+- **PWA Enhancements**: Initialized `vite-plugin-pwa` within `vite.config.ts` to implement offline-ready capabilities.
+- **System Resiliency**: Added exponential backoff retry wrappers on the client API fetch (`useGameEngine.ts`) and the backend Google Gemini client (`server.ts`) to gracefully handle mobile network instability and API rate limits.
+
+### Changed
+- **State Management Refactor**: Completely stripped out the monolithic `GameStateContext` causing global application re-renders. Re-architected data streams using modular **Zustand** stores (`useGameStore.ts`) enabling granular React component rendering for vastly improved mobile performance.
+- **Mobile UI**: Configured CSS `safe-area-inset` styling to prevent UI overlap with mobile notches and system bars.
+- **Testing Updates**: Upgraded Vitest environment configuration to `jsdom` and re-wrote integration tests to pass locally against the new state architecture.
+
 ## [1.1.0] - 2026-03-20
 
 ### Added

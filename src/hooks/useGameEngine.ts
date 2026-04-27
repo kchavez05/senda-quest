@@ -1,12 +1,28 @@
 import React, { useState } from 'react';
-import { useGameState } from '../context/GameStateContext';
+import { useGameStore } from '../store/useGameStore';
 import { db, handleFirestoreError, OperationType } from '../firebase';
 import { collection, addDoc, doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { Item } from '../types';
 import { RACES, TAG_COMBAT_START, TAG_COMBAT_END, TAG_ROLL_D20, TAG_ENEMIES_PREFIX, TAG_PLAYER_HP_PREFIX, TAG_PLAYER_MANA_PREFIX } from '../constants';
 
+const fetchWithRetry = async (url: string, options: any, retries = 2) => {
+  for (let i = 0; i < retries; i++) {
+    try {
+      const res = await fetch(url, options);
+      if (res.ok || res.status === 429) return res;
+      if (res.status < 500) return res;
+    } catch (e) {
+      if (i === retries - 1) throw e;
+    }
+    await new Promise(r => setTimeout(r, 1000 * Math.pow(2, i)));
+  }
+  return fetch(url, options);
+};
+
 export function useGameEngine() {
-  const { gameState, setGameState, user } = useGameState();
+  const gameState = useGameStore(s => s.gameState);
+  const setGameState = useGameStore(s => s.setGameState);
+  const user = useGameStore(s => s.user);
   const [input, setInput] = useState('');
   const [isRolling, setIsRolling] = useState(false);
   const [rollResult, setRollResult] = useState<{ value: number, type: string } | null>(null);
@@ -54,7 +70,7 @@ export function useGameEngine() {
         headers['Authorization'] = `Bearer ${token}`;
       }
 
-      const response = await fetch('/api/gm-response', {
+      const response = await fetchWithRetry('/api/gm-response', {
         method: 'POST',
         headers,
         body: JSON.stringify({ action, isRoll, gameState }),

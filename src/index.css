@@ -10,6 +10,10 @@
 @layer base {
   body {
     @apply bg-[#0a0502] text-[#e0d8d0] antialiased;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
   }
 
   /* Custom Scrollbar Styling */

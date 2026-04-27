@@ -1,14 +1,14 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ChevronDown } from 'lucide-react';
-import { useGameState } from '../../context/GameStateContext';
+import { useGameStore } from '../../store/useGameStore';
 
 interface ChatLogProps {
   isAILoading: boolean;
 }
 
 export default function ChatLog({ isAILoading }: ChatLogProps) {
-  const { gameState } = useGameState();
+  const gameState = useGameStore(s => s.gameState);
   const [showScrollButton, setShowScrollButton] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const lastLogRef = useRef<HTMLDivElement>(null);

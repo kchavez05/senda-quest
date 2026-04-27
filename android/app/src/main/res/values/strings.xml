@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">SendaQuest</string>
+    <string name="title_activity_main">SendaQuest</string>
+    <string name="package_name">com.sendaquest.app</string>
+    <string name="custom_url_scheme">com.sendaquest.app</string>
+</resources>
